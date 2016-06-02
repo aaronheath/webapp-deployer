@@ -14,6 +14,10 @@ class DeployAFL2016WebAppTest extends TestCase
     use DatabaseMigrations;
 
     protected $examplePayload;
+    protected $repo;
+    protected $deployment;
+    protected $events;
+    protected $constructorArgs;
 
     public function setUp()
     {
@@ -24,96 +28,39 @@ class DeployAFL2016WebAppTest extends TestCase
 
     public function testHandle()
     {
-        // Create Repository
-        $repo = Repository::create([
-            'name' => 'testuser/testrepo',
-            'branch' => 'master',
-            'token' => 'qwerty',
-            'job' => 'DeployAFL2016WebApp',
-        ]);
+        $this->setupTestsForClass();
 
-        // Create Deployment
-        $deployment = Deployment::create([
-            'repository' => $repo->id,
-            'request' => $this->examplePayload,
-        ]);
+        $this->events->expects($this->once())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
 
-        // Mock Event Dispatcher
-        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
-
-        $events->expects($this->once())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
-
-        // Stub Class Being Testing
-        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
-            ->setConstructorArgs([$events, $deployment])
-            ->setMethods(['exec'])
-            ->getMock();
+        $stubbed = $this->createStubbed(['exec']);
 
         $stubbed->method('exec')->willReturn(true);
 
         $stubbed->handle();
 
-        $deployment = $deployment->fresh();
+        $this->deployment = $this->deployment->fresh();
 
-        $this->assertEquals('success', $deployment->status);
+        $this->assertEquals('success', $this->deployment->status);
     }
 
     public function testHandleCheckForInProgress()
     {
-        // Create Repository
-        $repo = Repository::create([
-            'name' => 'testuser/testrepo',
-            'branch' => 'master',
-            'token' => 'qwerty',
-            'job' => 'DeployAFL2016WebApp',
-        ]);
+        $this->setupTestsForClass();
 
-        // Create Deployment
-        $deployment = Deployment::create([
-            'repository' => $repo->id,
-            'request' => $this->examplePayload,
-        ]);
-
-        // Mock Event Dispatcher
-        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
-
-        // Stub Class Being Testing
-        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
-            ->setConstructorArgs([$events, $deployment])
-            ->setMethods(['seekDeployment'])
-            ->getMock();
+        $stubbed = $this->createStubbed(['seekDeployment']);
 
         $stubbed->handle();
 
-        $this->assertEquals('in-progress', $deployment->status);
+        $this->assertEquals('in-progress', $this->deployment->status);
     }
 
     public function testHandleExec()
     {
-        // Create Repository
-        $repo = Repository::create([
-            'name' => 'testuser/testrepo',
-            'branch' => 'master',
-            'token' => 'qwerty',
-            'job' => 'DeployAFL2016WebApp',
-        ]);
+        $this->setupTestsForClass();
 
-        // Create Deployment
-        $deployment = Deployment::create([
-            'repository' => $repo->id,
-            'request' => $this->examplePayload,
-        ]);
+        $this->events->expects($this->once())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
 
-        // Mock Event Dispatcher
-        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
-
-        $events->expects($this->once())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
-
-        // Stub Class Being Testing
-        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
-            ->setConstructorArgs([$events, $deployment])
-            ->setMethods(['exec'])
-            ->getMock();
+        $stubbed = $this->createStubbed(['exec']);
 
         $stubbed->expects($this->once())->method('exec')->will($this->returnCallback(function($cmd) {
             $this->assertEquals('cd /var/www/afl-2016 ; git pull origin master ; npm install ; npm update', $cmd);
@@ -123,15 +70,30 @@ class DeployAFL2016WebAppTest extends TestCase
 
         $stubbed->handle();
 
-        $deployment = $deployment->fresh();
+        $this->deployment = $this->deployment->fresh();
 
-        $this->assertEquals('success', $deployment->status);
+        $this->assertEquals('success', $this->deployment->status);
     }
 
     public function testHandleWithFailedDeploy()
     {
+        $this->setupTestsForClass();
+
+        $this->events->expects($this->never())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
+
+        $stubbed = $this->createStubbed(['deploy']);
+
+        $stubbed->method('deploy')->willReturn(false);
+
+        $stubbed->handle();
+
+        $this->assertEquals('failed', $this->deployment->status);
+    }
+    
+    protected function setupTestsForClass()
+    {
         // Create Repository
-        $repo = Repository::create([
+        $this->repo = Repository::create([
             'name' => 'testuser/testrepo',
             'branch' => 'master',
             'token' => 'qwerty',
@@ -139,26 +101,22 @@ class DeployAFL2016WebAppTest extends TestCase
         ]);
 
         // Create Deployment
-        $deployment = Deployment::create([
-            'repository' => $repo->id,
+        $this->deployment = Deployment::create([
+            'repository' => $this->repo->id,
             'request' => $this->examplePayload,
         ]);
 
         // Mock Event Dispatcher
-        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
+        $this->events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
 
-        $events->expects($this->never())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
+        $this->constructorArgs = [$this->events, $this->deployment];
+    }
 
-        // Stub Class Being Testing
-        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
-            ->setConstructorArgs([$events, $deployment])
-            ->setMethods(['deploy'])
+    protected function createStubbed(array $setMethods)
+    {
+        return $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
+            ->setConstructorArgs($this->constructorArgs)
+            ->setMethods($setMethods)
             ->getMock();
-
-        $stubbed->method('deploy')->willReturn(false);
-
-        $stubbed->handle();
-
-        $this->assertEquals('failed', $deployment->status);
     }
 }
