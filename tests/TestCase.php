@@ -8,6 +8,8 @@ class TestCase extends Illuminate\Foundation\Testing\TestCase
      * @var string
      */
     protected $baseUrl = 'http://localhost';
+    protected $testClass;
+    protected $reflection;
 
     /**
      * Creates the application.
@@ -21,5 +23,37 @@ class TestCase extends Illuminate\Foundation\Testing\TestCase
         $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
         return $app;
+    }
+
+    public function setUp() {
+        if(!is_null($this->testClass)) {
+            $this->reflection = new \ReflectionClass($this->testClass);
+        }
+
+        parent::setUp();
+    }
+
+    public function getMethod($method)
+    {
+        $method = $this->reflection->getMethod($method);
+        $method->setAccessible(true);
+
+        return $method;
+    }
+
+    public function getProperty($property)
+    {
+        $property = $this->reflection->getProperty($property);
+        $property->setAccessible(true);
+
+        return $property->getValue($this->testClass);
+    }
+
+    public function setProperty($property, $value)
+    {
+        $property = $this->reflection->getProperty($property);
+        $property->setAccessible(true);
+
+        return $property->setValue($this->testClass, $value);
     }
 }

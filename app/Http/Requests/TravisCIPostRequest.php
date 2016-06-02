@@ -9,6 +9,8 @@ use Log;
 class TravisCIPostRequest extends Request
 {
     protected $payload;
+    protected $repos;
+    protected $repo;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -48,20 +50,24 @@ class TravisCIPostRequest extends Request
 
         $authHeader = $this->header('authorization');
 
-        if(!$this->generateAuthCodes()->contains($authHeader)) {
+        if(!$this->generateAuthCodes()->has($authHeader)) {
             return false;
         }
+
+        $this->repo = $this->repos->get($authHeader);
         
         return true;
     }
     
     protected function generateAuthCodes()
     {
-        $authCodes = Repository::all()->map(function($item, $key) {
-            return hash('sha256', $item->name . $item->token);
+        $this->repos = collect([]);
+
+        Repository::all()->each(function($item, $key) {
+            $this->repos->put(hash('sha256', $item->name . $item->token), $item);
         });
 
-        return collect($authCodes);
+        return $this->repos;
     }
     
     protected function verifyStatusMessage()
@@ -79,7 +85,7 @@ class TravisCIPostRequest extends Request
             return false;
         }
 
-        return $this->payload->get('branch') == 'master';
+        return $this->payload->get('branch') == $this->repo->branch;
     }
 
     /**

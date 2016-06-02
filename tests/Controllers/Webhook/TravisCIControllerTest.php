@@ -30,6 +30,7 @@ class TravisCIControllerTest extends TestCase
 
         Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
             'job' => 'ExampleJob',
         ]);
@@ -63,6 +64,7 @@ class TravisCIControllerTest extends TestCase
 
         Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
             'job' => 'ExampleJob',
         ]);
@@ -87,6 +89,7 @@ class TravisCIControllerTest extends TestCase
 
         Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
             'job' => 'ExampleJob',
         ]);
@@ -114,6 +117,7 @@ class TravisCIControllerTest extends TestCase
 
         Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
             'job' => 'ExampleJob',
         ]);

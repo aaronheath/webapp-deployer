@@ -14,6 +14,6 @@ class Deployment extends Model
 
     public function repo()
     {
-        $this->belongsTo('App\Repository', 'repository');
+        return $this->hasOne('App\Repository', 'id', 'repository');
     }
 }

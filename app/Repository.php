@@ -18,6 +18,6 @@ class Repository extends Model
     
     public function deployments()
     {
-        return $this->hasMany('App\Deployments', 'repository');
+        $this->belongsTo('App\Deployments', 'id', 'repository');
     }
 }

@@ -8,22 +8,24 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Deployment;
 use App\Events\ReleaseDeployed;
-use Event;
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 
 class DeployAFL2016WebApp extends Job implements ShouldQueue
 {
     use InteractsWithQueue, SerializesModels;
     
     protected $deployment;
+    protected $event;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct(Deployment $deployment)
+    public function __construct(EventDispatcher $event, Deployment $deployment)
     {
         $this->deployment = $deployment;
+        $this->event = $event;
     }
 
     /**
@@ -35,24 +37,36 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     {
         $this->updateStatus('in-progress');
 
-        $this->deploy() ? $this->deploySucceeded() : $this->deployFailed();
+        $this->seekDeployment();
     }
-    
+
     protected function updateStatus($status)
     {
         $this->deployment->status = $status;
         $this->deployment->save();
     }
+
+    protected function seekDeployment()
+    {
+        $this->deploy() ? $this->deploySucceeded() : $this->deployFailed();
+    }
     
     protected function deploy()
     {
+        $this->deployment = $this->deployment->fresh();
+
         $cmd = collect([
             'cd /var/www/afl-2016',
             'git pull origin ' . $this->deployment->repo->branch,
-            'npm update',
             'npm install',
+            'npm update',
         ])->implode(' ; ');
 
+        return $this->exec($cmd);
+    }
+    
+    protected function exec($cmd)
+    {
         return exec($cmd);
     }
     
@@ -60,7 +74,7 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     {
         $this->updateStatus('success');
 
-        Event::fire(new ReleaseDeployed($this->deployment));
+        $this->event->fire(new ReleaseDeployed($this->deployment));
     }
     
     protected function deployFailed()

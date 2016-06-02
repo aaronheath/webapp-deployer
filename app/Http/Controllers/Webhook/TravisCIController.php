@@ -30,7 +30,7 @@ class TravisCIController extends Controller
         
         $repoName = $payload['repository']['owner_name'] . '/' . $payload['repository']['name'];
         
-        $repo = Repository::where('name', $repoName)->first();
+        $repo = Repository::where('name', $repoName)->where('branch', $payload['branch'])->first();
         
         $deployment = Deployment::create([
             'repository' => $repo->id,

@@ -5,92 +5,160 @@ use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use App\Repository;
 use App\Deployment;
+use App\Events\ReleaseDeployed;
 use App\Jobs\DeployAFL2016WebApp;
+use Illuminate\Events\Dispatcher as EventDispatcher;
 
 class DeployAFL2016WebAppTest extends TestCase
 {
     use DatabaseMigrations;
 
-    public function testValid()
+    protected $examplePayload;
+
+    public function setUp()
     {
-        Deployment::create();
+        parent::setUp();
+
+        $this->examplePayload = file_get_contents(storage_path('tests/example-payload.json'));
     }
 
-    public function testWithInvalidAuthCode()
+    public function testHandle()
     {
-        $this->doesntExpectJobs(App\Jobs\ExampleJob::class);
-
-        Repository::create([
+        // Create Repository
+        $repo = Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
-            'job' => 'ExampleJob',
+            'job' => 'DeployAFL2016WebApp',
         ]);
 
-        $authCode = hash('sha256', 'WillBeInvalid');
+        // Create Deployment
+        $deployment = Deployment::create([
+            'repository' => $repo->id,
+            'request' => $this->examplePayload,
+        ]);
 
-        $response = $this->call(
-            'POST',
-            '/webhook/travisci',
-            ['payload' => $this->examplePayload],
-            [],
-            [],
-            ['HTTP_Authorization' => $authCode]
-        );
+        // Mock Event Dispatcher
+        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
 
-        $this->assertEquals(403, $response->status());
+        $events->expects($this->once())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
+
+        // Stub Class Being Testing
+        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
+            ->setConstructorArgs([$events, $deployment])
+            ->setMethods(['exec'])
+            ->getMock();
+
+        $stubbed->method('exec')->willReturn(true);
+
+        $stubbed->handle();
+
+        $deployment = $deployment->fresh();
+
+        $this->assertEquals('success', $deployment->status);
     }
 
-    public function testWithInvalidStatusMessage()
+    public function testHandleCheckForInProgress()
     {
-        $this->doesntExpectJobs(App\Jobs\ExampleJob::class);
-
-        Repository::create([
+        // Create Repository
+        $repo = Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
-            'job' => 'ExampleJob',
+            'job' => 'DeployAFL2016WebApp',
         ]);
 
-        $authCode = hash('sha256', 'testuser/testrepoqwerty');
+        // Create Deployment
+        $deployment = Deployment::create([
+            'repository' => $repo->id,
+            'request' => $this->examplePayload,
+        ]);
 
-        $payload = json_decode($this->examplePayload, true);
-        $payload['status_message'] = 'Broken';
+        // Mock Event Dispatcher
+        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
 
-        $response = $this->call(
-            'POST',
-            '/webhook/travisci',
-            ['payload' => collect($payload)->toJson()],
-            [],
-            [],
-            ['HTTP_Authorization' => $authCode]
-        );
+        // Stub Class Being Testing
+        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
+            ->setConstructorArgs([$events, $deployment])
+            ->setMethods(['seekDeployment'])
+            ->getMock();
 
-        $this->assertEquals(403, $response->status());
+        $stubbed->handle();
+
+        $this->assertEquals('in-progress', $deployment->status);
     }
 
-    public function testWithInvalidBranch()
+    public function testHandleExec()
     {
-        $this->doesntExpectJobs(App\Jobs\ExampleJob::class);
-
-        Repository::create([
+        // Create Repository
+        $repo = Repository::create([
             'name' => 'testuser/testrepo',
+            'branch' => 'master',
             'token' => 'qwerty',
-            'job' => 'ExampleJob',
+            'job' => 'DeployAFL2016WebApp',
         ]);
 
-        $authCode = hash('sha256', 'testuser/testrepoqwerty');
+        // Create Deployment
+        $deployment = Deployment::create([
+            'repository' => $repo->id,
+            'request' => $this->examplePayload,
+        ]);
 
-        $payload = json_decode($this->examplePayload, true);
-        $payload['branch'] = 'task/issue';
+        // Mock Event Dispatcher
+        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
 
-        $response = $this->call(
-            'POST',
-            '/webhook/travisci',
-            ['payload' => collect($payload)->toJson()],
-            [],
-            [],
-            ['HTTP_Authorization' => $authCode]
-        );
+        $events->expects($this->once())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
 
-        $this->assertEquals(403, $response->status());
+        // Stub Class Being Testing
+        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
+            ->setConstructorArgs([$events, $deployment])
+            ->setMethods(['exec'])
+            ->getMock();
+
+        $stubbed->expects($this->once())->method('exec')->will($this->returnCallback(function($cmd) {
+            $this->assertEquals('cd /var/www/afl-2016 ; git pull origin master ; npm install ; npm update', $cmd);
+
+            return true;
+        }));
+
+        $stubbed->handle();
+
+        $deployment = $deployment->fresh();
+
+        $this->assertEquals('success', $deployment->status);
+    }
+
+    public function testHandleWithFailedDeploy()
+    {
+        // Create Repository
+        $repo = Repository::create([
+            'name' => 'testuser/testrepo',
+            'branch' => 'master',
+            'token' => 'qwerty',
+            'job' => 'DeployAFL2016WebApp',
+        ]);
+
+        // Create Deployment
+        $deployment = Deployment::create([
+            'repository' => $repo->id,
+            'request' => $this->examplePayload,
+        ]);
+
+        // Mock Event Dispatcher
+        $events = $this->getMockBuilder('Illuminate\Events\Dispatcher')->getMock();
+
+        $events->expects($this->never())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
+
+        // Stub Class Being Testing
+        $stubbed = $this->getMockBuilder('App\Jobs\DeployAFL2016WebApp')
+            ->setConstructorArgs([$events, $deployment])
+            ->setMethods(['deploy'])
+            ->getMock();
+
+        $stubbed->method('deploy')->willReturn(false);
+
+        $stubbed->handle();
+
+        $this->assertEquals('failed', $deployment->status);
     }
 }
