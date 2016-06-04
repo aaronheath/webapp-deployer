@@ -52,9 +52,9 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
         
         $this->updateOutput($output, $returnValue);
 
-        $return = $returnValue == 0;
+        $return = ($returnValue == 0);
 
-        Log::info('--- deploy returning', [$return]);
+        $this->log('--- deploy returning', [$return]);
         
         return $return;
     }
@@ -73,18 +73,18 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function exec($cmd)
     {
-        Log::info('--- Before exec', [$cmd]);
+        $this->log('--- Before exec', [$cmd]);
 
         exec($cmd, $output, $returnValue);
 
-        Log::info('--- After exec', [$returnValue, $output]);
+        $this->log('--- After exec', [$returnValue, $output]);
         
         return [$output, $returnValue];
     }
     
     protected function deploySucceeded()
     {
-        Log::info('--- In deploySucceeded');
+        $this->log('--- In deploySucceeded');
 
         $this->updateStatus('success');
 
@@ -93,7 +93,7 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function deployFailed()
     {
-        Log::info('--- In deployFailed');
+        $this->log('--- In deployFailed');
 
         $this->updateStatus('failed');
     }
@@ -106,8 +106,21 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
 
     protected function updateOutput($output, $returnValue)
     {
+        $this->log('--- start of updateOutput');
+
         $this->deployment->return_value = $returnValue;
         $this->deployment->output = $output;
         $this->deployment->save();
+
+        $this->log('--- end of updateOutput');
+    }
+
+    protected function log($msg, $arr = [])
+    {
+        $prepend = [
+            'deployment' => $this->deployment->id,
+        ];
+
+        Log::info($msg, $prepend + $arr);
     }
 }
