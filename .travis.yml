@@ -5,9 +5,6 @@ php:
 
 before_script:
   - composer self-update
-  - composer install --prefer-source --no-interaction --dev
-  - composer run post-root-package-install
-  - composer run post-create-project-cmd
-  - composer run post-install-cmd
+  - composer run-script setup
 
 script: vendor/bin/phpunit
