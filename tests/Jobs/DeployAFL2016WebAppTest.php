@@ -67,7 +67,7 @@ class DeployAFL2016WebAppTest extends TestCase
         $stubbed = $this->createStubbed(['exec']);
 
         $stubbed->expects($this->once())->method('exec')->will($this->returnCallback(function($cmd) {
-            $this->assertEquals('cd /var/www/afl-2016 ; git pull origin master ; npm install ; npm update', $cmd);
+            $this->assertEquals('cd /var/www/com_aaronheath_afl ; git pull origin master ; npm install ; npm update', $cmd);
 
             return $this->successfulExecReturn();
         }));
