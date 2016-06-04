@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Deployment;
 use App\Events\ReleaseDeployed;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+use Log;
 
 class DeployAFL2016WebApp extends Job implements ShouldQueue
 {
@@ -68,7 +69,11 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function exec($cmd)
     {
+        Log::info('--- Before exec', [$cmd]);
+
         exec($cmd, $output, $returnValue);
+
+        Log::info('--- After exec', [$returnValue, $output]);
         
         return [$output, $returnValue];
     }
