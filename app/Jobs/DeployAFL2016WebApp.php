@@ -36,9 +36,24 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
      */
     public function handle()
     {
+        if(!$this->attemptsCheck()) {
+            return;
+        }
+
         $this->updateStatus('in-progress');
 
         $this->seekDeployment();
+    }
+
+    protected function attemptsCheck()
+    {
+        if($this->attempts() > 3) {
+            $this->triggerFail();
+
+            return false;
+        }
+
+        return true;
     }
 
     protected function seekDeployment()
@@ -54,8 +69,6 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
 
         $return = ($returnValue == 0);
 
-        $this->log('--- deploy returning', [$return]);
-        
         return $return;
     }
     
@@ -73,18 +86,14 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function exec($cmd)
     {
-        $this->log('--- Before exec', [$cmd]);
-
         exec($cmd, $output, $returnValue);
 
-        $this->log('--- After exec', [$returnValue, $output]);
-        
         return [$output, $returnValue];
     }
     
     protected function deploySucceeded()
     {
-        $this->log('--- In deploySucceeded');
+        $this->log('Deployment Succeeded');
 
         $this->updateStatus('success');
 
@@ -93,7 +102,7 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function deployFailed()
     {
-        $this->log('--- In deployFailed');
+        $this->log('Deployment Failed');
 
         $this->updateStatus('failed');
     }
@@ -106,13 +115,18 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
 
     protected function updateOutput($output, $returnValue)
     {
-        $this->log('--- start of updateOutput');
-
         $this->deployment->return_value = $returnValue;
         $this->deployment->output = $output;
         $this->deployment->save();
+    }
 
-        $this->log('--- end of updateOutput');
+    protected function triggerFail()
+    {
+        $this->deployFailed();
+
+        $this->failed();
+
+        $this->log('Deployment Being Manually Failed');
     }
 
     protected function log($msg, $arr = [])
