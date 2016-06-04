@@ -59,7 +59,7 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
         $this->deployment = $this->deployment->fresh();
         
         return collect([
-            'cd /var/www/afl-2016',
+            'cd /var/www/com_aaronheath_afl',
             'git pull origin ' . $this->deployment->repo->branch,
             'npm install',
             'npm update',
