@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Webhook;
 
 use Illuminate\Http\Request;
-
+use Illuminate\Events\Dispatcher as EventDispatcher;
 use App\Http\Requests;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TravisCIPostRequest;
@@ -39,6 +39,6 @@ class TravisCIController extends Controller
 
         $class = 'App\Jobs\\' . $repo->job;
         
-        $this->dispatch(new $class($deployment));
+        $this->dispatch(new $class(new EventDispatcher(), $deployment));
     }
 }
