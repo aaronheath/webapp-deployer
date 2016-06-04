@@ -80,6 +80,8 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function deploySucceeded()
     {
+        Log::info('--- In deploySucceeded');
+
         $this->updateStatus('success');
 
         $this->event->fire(new ReleaseDeployed($this->deployment));
@@ -87,6 +89,8 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function deployFailed()
     {
+        Log::info('--- In deployFailed');
+
         $this->updateStatus('failed');
     }
 
