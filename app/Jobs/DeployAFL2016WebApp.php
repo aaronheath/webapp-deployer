@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Deployment;
 use App\Events\ReleaseDeployed;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+use Log;
 
 class DeployAFL2016WebApp extends Job implements ShouldQueue
 {
@@ -35,9 +36,24 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
      */
     public function handle()
     {
+        if(!$this->attemptsCheck()) {
+            return;
+        }
+
         $this->updateStatus('in-progress');
 
         $this->seekDeployment();
+    }
+
+    protected function attemptsCheck()
+    {
+        if($this->attempts() > 3) {
+            $this->triggerFail();
+
+            return false;
+        }
+
+        return true;
     }
 
     protected function seekDeployment()
@@ -50,8 +66,10 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
         list($output, $returnValue) = $this->exec($this->cmd());
         
         $this->updateOutput($output, $returnValue);
-        
-        return $returnValue == 0;
+
+        $return = ($returnValue == 0);
+
+        return $return;
     }
     
     protected function cmd()
@@ -69,12 +87,14 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     protected function exec($cmd)
     {
         exec($cmd, $output, $returnValue);
-        
+
         return [$output, $returnValue];
     }
     
     protected function deploySucceeded()
     {
+        $this->log('Deployment Succeeded');
+
         $this->updateStatus('success');
 
         $this->event->fire(new ReleaseDeployed($this->deployment));
@@ -82,6 +102,8 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function deployFailed()
     {
+        $this->log('Deployment Failed');
+
         $this->updateStatus('failed');
     }
 
@@ -96,5 +118,23 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
         $this->deployment->return_value = $returnValue;
         $this->deployment->output = $output;
         $this->deployment->save();
+    }
+
+    protected function triggerFail()
+    {
+        $this->deployFailed();
+
+        $this->failed();
+
+        $this->log('Deployment Being Manually Failed');
+    }
+
+    protected function log($msg, $arr = [])
+    {
+        $prepend = [
+            'deployment' => $this->deployment->id,
+        ];
+
+        Log::info($msg, $prepend + $arr);
     }
 }

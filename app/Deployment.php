@@ -14,6 +14,10 @@ class Deployment extends Model
         'output',
     ];
 
+    protected $casts = [
+        'output' => 'array',
+    ];
+
     public function repo()
     {
         return $this->hasOne('App\Repository', 'id', 'repository');

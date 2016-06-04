@@ -28,7 +28,11 @@ class Kernel extends HttpKernel
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
+
+//            Disabled Globally as we have at least one endpoint that requires it off.
+//            Should we need to re-enable it on a route by route baisis we can use a techniquie similar to below
+//            http://laravel.io/forum/11-14-2014-disabling-the-csrf-middleware-in-laravel-5?page=1#reply-17168
+//            \App\Http\Middleware\VerifyCsrfToken::class,
         ],
 
         'api' => [
