@@ -34,13 +34,15 @@ class DeployAFL2016WebAppTest extends TestCase
 
         $stubbed = $this->createStubbed(['exec']);
 
-        $stubbed->method('exec')->willReturn(true);
+        $stubbed->method('exec')->willReturn($this->successfulExecReturn());
 
         $stubbed->handle();
 
-        $this->deployment = $this->deployment->fresh();
+        $this->refresh($this->deployment);
 
         $this->assertEquals('success', $this->deployment->status);
+        $this->assertEquals($this->successfulExecReturn()[1], $this->deployment->return_value);
+        $this->assertEquals($this->successfulExecReturn()[0], $this->deployment->output);
     }
 
     public function testHandleCheckForInProgress()
@@ -50,6 +52,8 @@ class DeployAFL2016WebAppTest extends TestCase
         $stubbed = $this->createStubbed(['seekDeployment']);
 
         $stubbed->handle();
+
+        $this->refresh($this->deployment);
 
         $this->assertEquals('in-progress', $this->deployment->status);
     }
@@ -65,12 +69,12 @@ class DeployAFL2016WebAppTest extends TestCase
         $stubbed->expects($this->once())->method('exec')->will($this->returnCallback(function($cmd) {
             $this->assertEquals('cd /var/www/afl-2016 ; git pull origin master ; npm install ; npm update', $cmd);
 
-            return true;
+            return $this->successfulExecReturn();
         }));
 
         $stubbed->handle();
 
-        $this->deployment = $this->deployment->fresh();
+        $this->refresh($this->deployment);
 
         $this->assertEquals('success', $this->deployment->status);
     }
@@ -81,13 +85,19 @@ class DeployAFL2016WebAppTest extends TestCase
 
         $this->events->expects($this->never())->method('fire')->with($this->isInstanceOf(ReleaseDeployed::class));
 
-        $stubbed = $this->createStubbed(['deploy']);
+        $stubbed = $this->createStubbed(['exec']);
 
-        $stubbed->method('deploy')->willReturn(false);
+        $deployResponse = ['failure message', 2];
+
+        $stubbed->method('exec')->willReturn($deployResponse);
 
         $stubbed->handle();
 
+        $this->refresh($this->deployment);
+
         $this->assertEquals('failed', $this->deployment->status);
+        $this->assertEquals($deployResponse[1], $this->deployment->return_value);
+        $this->assertEquals($deployResponse[0], $this->deployment->output);
     }
     
     protected function setupTestsForClass()
@@ -118,5 +128,10 @@ class DeployAFL2016WebAppTest extends TestCase
             ->setConstructorArgs($this->constructorArgs)
             ->setMethods($setMethods)
             ->getMock();
+    }
+
+    protected function successfulExecReturn()
+    {
+        return ['response text from cmds', 0];
     }
 }

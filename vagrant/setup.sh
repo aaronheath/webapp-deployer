@@ -26,7 +26,7 @@ sudo npm install -g grunt-cli
 sudo apt-get -y install php5 libapache2-mod-php5
 sudo apt-get -y install php5-cli
 sudo apt-get -y install php5-mcrypt
-sudo apt-get -y install php-sqlite
+sudo apt-get -y install php5-sqlite
 sudo php5enmod mcrypt
 
 # Install Composer
