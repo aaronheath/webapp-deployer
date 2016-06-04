@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Database\Eloquent\Model;
+
 class TestCase extends Illuminate\Foundation\Testing\TestCase
 {
     /**
@@ -55,5 +57,15 @@ class TestCase extends Illuminate\Foundation\Testing\TestCase
         $property->setAccessible(true);
 
         return $property->setValue($this->testClass, $value);
+    }
+
+    /**
+     * Calls fresh() on Model argument
+     *
+     * @param $var
+     */
+    public function refresh(Model &$var)
+    {
+        $var = $var->fresh();
     }
 }

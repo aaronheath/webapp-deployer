@@ -17,6 +17,8 @@ class CreateDeploymentsTable extends Migration
             $table->integer('repository');
             $table->string('status')->default('pending');
             $table->json('request');
+            $table->tinyInteger('return_value')->nullable();
+            $table->longText('output')->nullable();
             $table->timestamps();
         });
     }

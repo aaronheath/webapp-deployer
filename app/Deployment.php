@@ -10,6 +10,8 @@ class Deployment extends Model
         'repository',
         'status',
         'request',
+        'return_value',
+        'output',
     ];
 
     public function repo()

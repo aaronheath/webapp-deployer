@@ -40,12 +40,6 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
         $this->seekDeployment();
     }
 
-    protected function updateStatus($status)
-    {
-        $this->deployment->status = $status;
-        $this->deployment->save();
-    }
-
     protected function seekDeployment()
     {
         $this->deploy() ? $this->deploySucceeded() : $this->deployFailed();
@@ -53,21 +47,30 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     
     protected function deploy()
     {
+        list($output, $returnValue) = $this->exec($this->cmd());
+        
+        $this->updateOutput($output, $returnValue);
+        
+        return $returnValue == 0;
+    }
+    
+    protected function cmd()
+    {
         $this->deployment = $this->deployment->fresh();
-
-        $cmd = collect([
+        
+        return collect([
             'cd /var/www/afl-2016',
             'git pull origin ' . $this->deployment->repo->branch,
             'npm install',
             'npm update',
         ])->implode(' ; ');
-
-        return $this->exec($cmd);
     }
     
     protected function exec($cmd)
     {
-        return exec($cmd);
+        exec($cmd, $output, $returnValue);
+        
+        return [$output, $returnValue];
     }
     
     protected function deploySucceeded()
@@ -80,5 +83,18 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
     protected function deployFailed()
     {
         $this->updateStatus('failed');
+    }
+
+    protected function updateStatus($status)
+    {
+        $this->deployment->status = $status;
+        $this->deployment->save();
+    }
+
+    protected function updateOutput($output, $returnValue)
+    {
+        $this->deployment->return_value = $returnValue;
+        $this->deployment->output = $output;
+        $this->deployment->save();
     }
 }
