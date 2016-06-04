@@ -51,8 +51,12 @@ class DeployAFL2016WebApp extends Job implements ShouldQueue
         list($output, $returnValue) = $this->exec($this->cmd());
         
         $this->updateOutput($output, $returnValue);
+
+        $return = $returnValue == 0;
+
+        Log::info('--- deploy returning', [$return]);
         
-        return $returnValue == 0;
+        return $return;
     }
     
     protected function cmd()
