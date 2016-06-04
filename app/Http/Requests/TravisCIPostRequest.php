@@ -22,19 +22,25 @@ class TravisCIPostRequest extends Request
         $this->payload = collect(json_decode($this->input('payload'), true));
         
         if(!$this->verifyAuthCode()) {
-            Log::info('Travis CI POST - Invalid authorization code');
+            Log::info('Travis CI POST - Invalid authorization code', [
+                'authorization' => $this->header('authorization'),
+            ]);
 
             return false;
         }
 
         if(!$this->verifyStatusMessage()) {
-            Log::info('Travis CI POST - Invalid status message');
+            Log::info('Travis CI POST - Invalid status message', [
+                'status_message' => $this->payload->get('status_message'),
+            ]);
 
             return false;
         }
 
         if(!$this->verifyBranch()) {
-            Log::info('Travis CI POST - Invalid branch');
+            Log::info('Travis CI POST - Invalid branch', [
+                'branch' => $this->payload->get('branch'),
+            ]);
 
             return false;
         }
