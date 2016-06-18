@@ -20,6 +20,8 @@ class TravisCIPostRequest extends Request
     public function authorize()
     {
         $this->payload = collect(json_decode($this->input('payload'), true));
+
+        Log::info('Travis CI POST - Payload', $this->payload->toArray());
         
         if(!$this->verifyAuthCode()) {
             Log::info('Travis CI POST - Invalid authorization code', [
